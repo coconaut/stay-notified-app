@@ -1,0 +1,17 @@
+﻿{
+    "methods": [
+        {
+            "notification_method": "twitter",
+            "sources": [
+                "2432835325"
+            ]
+        },
+        {
+            "notification_method": "rss",
+            "sources": [
+                "https://visualstudiomagazine.com/rss-feeds/c-corner.aspx",
+                "http://changelog.com/feed/"
+            ]
+        }
+    ]
+}

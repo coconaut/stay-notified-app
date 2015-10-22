@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Third Party Notifications</title>
+    <!-- scripts: consider bundling... -->
+    <script type="text/javascript" src="js/angular.js"></script>
+    <script type="text/javascript" src="js/angular-sanitize.js"></script>
+    <script type="text/javascript" src="js/app.js"></script>
+    <script type="text/javascript" src="js/factories/notification_factory.js"></script>
+    <script type="text/javascript" src="js/controllers/notification_controller.js"></script>
+    <style>
+        body, h1, h2 {
+            margin: 0 !important;
+            padding: 0 !important;
+            font-family: Arial;
+        }
+
+        .blue500 {
+            background-color: #2196F3;
+            color: #FFFFFF;
+        }
+
+        .blue500_text {
+            color: #2196F3;
+            font-weight: bold;
+        }
+
+        #header {
+            padding: 10px 0 35px 35px;
+            padding-bottom: 35px;
+            margin-bottom: 35px;
+            box-shadow: 3px 3px 7px rgba(0,0,0,0.4);
+        }
+
+        input[type=button], input[type=submit] {
+            border-radius: 0;
+            border: none;
+            padding: 5px 10px 5px 10px;
+            font-weight: bold;
+            background-color: #EF5350;
+            color: #FFFFFF;
+            box-shadow: 3px 3px 7px rgba(0,0,0,0.4);
+            outline: none;
+        }
+
+            input[type=button]:hover, input[type=submit]:hover {
+                background-color: #C62828;
+                outline: none;
+            }
+
+
+        input[type=text] {
+            border: none;
+            border-bottom: 1px solid #2196F3;
+            outline: none;
+        }
+
+
+        #search_div {
+            margin: 20px;
+        }
+
+        #sorting_div {
+            margin: 20px;
+        }
+
+
+        .notification_list_inner {
+            margin: 30px 50px 0 50px;
+            padding: 10px 40px 10px 40px;
+            box-shadow: 0px 2px 3px rgba(0,0,0,0.4);
+        }
+
+            .notification_list_inner:hover {
+                box-shadow: 0px 6px 10px rgba(0,0,0,0.4);
+                -webkit-transition: box-shadow 200ms; /* Safari */
+                transition: box-shadow 200ms;
+            }
+
+        h3 {
+            color: #2196F3;
+        }
+
+        .notification_list_inner a {
+            color: #EF5350;
+        }
+    </style>
+</head>
+<body ng-app="NOTEY">
+    <div id="header" class="blue500">
+        <h2>Third Party Notifications</h2>
+    </div>
+    <div ng-controller="notification_controller">
+        <!-- search filters -->
+        <div id="search_div">
+            <form id="search_form" novalidate ng-submit="searchNotifications()">
+                <input type="text" ng-model="source" placeholder="Source" />
+                <input type="text" ng-model="date_start" placeholder="Date Start" />
+                <input type="text" ng-model="date_end" placeholder="Date End" />
+                <select ng-model="status">
+                    <option value="0">< All ></option>
+                    <option value="pending">Pending</option>
+                    <option value="reviewed">Reviewed</option>
+                </select>
+                <input type="submit" value="SEARCH" />
+                <!--<input type="button" ng-click="getNotifications()" value="GET (to be replaced by search submit)" />-->
+            </form>
+        </div>
+
+        <div>
+            <div id="sorting_div" ng-show="notifications">
+                <select ng-model="sort_by">
+                    <option value="source">Source</option>
+                    <option value="pub_date">Pub Date</option>
+                    <option value="status">Status</option>
+                </select>
+
+                <select ng-model="sort_dir">
+                    <option value="+">Ascending</option>
+                    <option value="-">Descending</option>
+                </select>
+            </div>
+            <div class="notification_list_inner" ng-repeat="noti in notifications | orderBy: (sort_dir + sort_by)">
+                <p><span class="blue500_text">ID: </span>{{noti._id}}</p>
+                <p><span class="blue500_text">Source: </span>{{noti.source}}</p>
+                <p><span class="blue500_text">Notification:</span></p>
+                <!-- notifications: some are HTML (from RSS) so let them be pretty -->
+                <div class="notification_container" ng-bind-html="noti.notification"></div>
+
+                <p><span class="blue500_text">Method: </span>{{noti.notification_method.case}}</p>
+                <p><span class="blue500_text">PubDate: </span>{{noti.pub_date}}</p>
+                <p><span class="blue500_text">Identifier: </span>{{noti.identifier}}</p>
+                <p><span class="blue500_text">Status: </span>{{noti.status.case}}</p>
+                <input type="button" value="Mark Reviewed" ng-show="noti.status.case == 'Pending'" ng-click="markReviewed(noti._id, $index)" />
+            </div>
+        </div>
+    </div>
+</body>
+</html>
