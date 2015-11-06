@@ -34,7 +34,11 @@ module Startup =
         // re-map '/' to where we want
         let opts = new FileServerOptions()
         opts.RequestPath <- PathString.Empty
-        opts.FileSystem <- new PhysicalFileSystem(".\site")
+        //opts.FileSystem <- new PhysicalFileSystem(".\site")
+        // Need to deal with linux, and its different directory seperator
+        let sitePath = sprintf ".%csite" System.IO.Path.DirectorySeparatorChar
+        opts.FileSystem <- new PhysicalFileSystem(sitePath)
+
             
         // set up app
         app

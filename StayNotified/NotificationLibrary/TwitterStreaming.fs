@@ -31,11 +31,11 @@ module TwitterStreaming =
         let req_method = "POST"
         let base_url = Helpers.gettwitterStreamingEndpoint()
         let request_header = 
-            getRequestHeader [("follow", source_ids); ("delimited", "length"); ("replies", "all")] req_method base_url
+            getRequestHeader [("follow", source_ids); ("delimited", "length")] req_method base_url
         
         // get bytes for request body
         let dataStream = 
-            sprintf "follow=%s&delimited=length&replies=all" source_ids
+            sprintf "follow=%s&delimited=length" source_ids
             |> System.Text.Encoding.UTF8.GetBytes
         // create request
         let req = 
@@ -111,18 +111,53 @@ module TwitterStreaming =
         member this.StopListening() = stopListening()
         member this.Restart(handler_function, error_function) = restart(handler_function, error_function)
 
+
+
+    // active pattern for making sure valid tweet
+    let (|TWEET|NOTWEET|) (tweet: Tweet.Root) = 
+        if tweet.Text.IsSome && tweet.IdStr.IsSome && tweet.User.IsSome then
+            TWEET
+        else
+            NOTWEET
+
+    // active pattern for filtering out replies -> make sure valid first...
+    let (|REPLY|NOTREPLY|) (tweet: Tweet.Root) = 
+        let rtsn =  
+            match tweet.InReplyToScreenName with
+            | Some(t) -> if t <> "" then true else false
+            | _ -> false
+        let rtsi = 
+            match tweet.InReplyToStatusId with
+            | Some(t) -> if t > (int64 0) then true else false
+            | _ -> false
+        let rtsu = 
+            match tweet.InReplyToUserId with
+            | Some(t) -> if t > 0 then true else false
+            | _ -> false
+
+        let rt =
+            if tweet.Text.Value.Length > 2 then
+                if (tweet.Text.Value.[0..1].ToLower()) = "rt" then true
+                else false
+            else false
+        if rtsn || rtsi || rtsu || rt then REPLY
+        else NOTREPLY
+            
+
     /// returns a Notification option
     let mapStreamingTweetToNotification (tweet: Tweet.Root) = 
-        if tweet.Text.IsSome && tweet.IdStr.IsSome && tweet.User.IsSome then
-            // could screen for retweets here if we want...
-            let use_date = 
-                match tweet.CreatedAt with
-                | Some c -> parseDateOrNow c
-                | None -> DateTime.Now
-            Some(createTweet tweet.User.Value.Name tweet.Text.Value use_date (tweet.IdStr.Value.ToString()))
-        else
-            None
-
+        match tweet with
+        | TWEET ->
+            match tweet with
+            | NOTREPLY ->
+                let use_date = 
+                    match tweet.CreatedAt with
+                    | Some c -> parseDateOrNow c
+                    | None -> DateTime.Now
+                Some(createTweet tweet.User.Value.Name tweet.Text.Value use_date (tweet.IdStr.Value.ToString()))
+            | REPLY -> None
+        | NOTWEET -> None
+        
     type TwitterSupervisorMessage = 
     | StopConsumer
     | RestartConsumer
@@ -130,7 +165,7 @@ module TwitterStreaming =
     | ConsumerError of string
     | ReaderError of string
 
-    type TwitterSupervisor(handler_function, source_wait_time, restart_wait_time) =
+    type TwitterSupervisor(handler_function, logger_function, source_wait_time, restart_wait_time) =
         let agent = new MailboxProcessor<TwitterSupervisorMessage>(fun inbox ->
             
             // symbols for error handling, think erlang atoms
@@ -140,6 +175,7 @@ module TwitterStreaming =
             let consumer_error_func(ex : exn) = inbox.Post(ConsumerError(ex.Message))
 
             let startConsumer() = 
+                logger_function("Starting Twitter Consumer")
                 let new_consumer  = new TwitterConsumer()
                 new_consumer.StartListening(handler_function, consumer_error_func)
                 new_consumer
@@ -147,9 +183,12 @@ module TwitterStreaming =
             let startReader() = 
                 // need to form new request if any source changes -> don't really care what the change was, since 
                 // auth forces us to reform whole request anyway
+                logger_function("Starting Twitter Reader")
                 let error_func(ex : exn) = inbox.Post(ReaderError(ex.Message))
                 let restart_func(_) = inbox.Post(RestartConsumer)
-                let reader = new SourceReaderAgent(restart_func, restart_func, source_wait_time, NotificationMethod.Twitter)
+                let reader = new SourceReaderAgent(restart_func, restart_func, logger_function, source_wait_time, NotificationMethod.Twitter)
+                // MAKE SURE YOU ACTUALLY START IT
+                reader.Start()
                 reader
 
             let rec loop(consumer : TwitterConsumer, reader: SourceReaderAgent) = async {
@@ -158,6 +197,7 @@ module TwitterStreaming =
                 | StopConsumer -> consumer.StopListening()
                 | RestartConsumer -> 
                     // wait a few, then restart the connection
+                    logger_function("Restarting Twitter Consumer")
                     do! Async.Sleep(restart_wait_time)
                     consumer.Restart(handler_function, consumer_error_func)
                 | KillTwitterSupervisor ->
@@ -168,12 +208,15 @@ module TwitterStreaming =
                     | s when s = DeathMessage -> ()
                     | _ -> 
                         // wait a few minutes, then try to form new connection to Twitter
+                        logger_function(sprintf "Twitter Consumer Error %s" (DateTime.Now.ToString()))
                         do! Async.Sleep(restart_wait_time)
                         return! loop(startConsumer(), reader)
                 | ReaderError(exn_msg) ->
                     match exn_msg with
                     | s when s = DeathMessage -> ()
-                    | _ -> return! loop(consumer, startReader())
+                    | _ -> 
+                        logger_function(sprintf "Twitter Reader Error %s" (DateTime.Now.ToString()))
+                        return! loop(consumer, startReader())
                 return! loop(consumer, reader)
             }
             loop(startConsumer(), startReader())                   

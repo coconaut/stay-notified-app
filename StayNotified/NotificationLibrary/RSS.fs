@@ -32,7 +32,7 @@ module RSS =
             |> Seq.map mapper
             |> Seq.toList
         with
-            | ex -> printfn "%s" ex.Message
+            | ex -> //printfn "%s" ex.Message
                     [] // todo: how do we want to handle errors?
    
     
@@ -45,10 +45,10 @@ module RSS =
                 let! msg = inbox.TryReceive wait_time
                 match msg with 
                 | Some Die -> 
-                    printfn "Killing %s" source
+                    //printfn "Killing %s" source
                     failwith DeathMessage
                 | None ->
-                    printfn "Looping %s" source
+                    //printfn "Looping %s" source
                     let new_time = DateTime.Now
                     let notifications = tryProcessFeed source time_from
                     // send for processing
@@ -68,7 +68,6 @@ module RSS =
 
 
     type SupervisorMessage = 
-    | StartReader
     | Create of string
     | Remove of string
     | Error of string * string
@@ -81,7 +80,7 @@ module RSS =
 
             // starts an RSS agent
             let start_agent (registry : Map<string, RSSAgent>) source_name = 
-                printfn "starting agent %s" source_name
+                //printfn "starting agent %s" source_name
                 let sub_agent = new RSSAgent(handler_function, source_name, wait_time)
                 // add to registry
                 let new_reg = registry.Add(source_name, sub_agent)
@@ -91,73 +90,75 @@ module RSS =
                 
             // restarts an RSS agent
             let restart_agent (registry : Map<string, RSSAgent>) source_name = 
-                printfn "restarting agent %s" source_name
+                //printfn "restarting agent %s" source_name
                 let new_reg = start_agent (registry.Remove(source_name)) source_name
                 new_reg
 
             // starts (or re-starts) the reader agent -> should only ever be one instance
             // TODO: supervisor should maintain ref to reader as well...
             let start_reader() = 
-                printfn "starting reader"
+                //printfn "starting reader"
                 let add_func(sn) = inbox.Post(Create(sn))
                 let remove_func(sn) = inbox.Post(Remove(sn))
                 let error_func(ex : Exception) = inbox.Post(Error(reader_name, ex.Message))
-                let reader = new SourceReaderAgent(add_func, remove_func, wait_time, NotificationMethod.RSS)
+                let reader = new SourceReaderAgent(add_func, remove_func, ignore, wait_time, NotificationMethod.RSS)
                 reader.AddError(error_func)
+                // MAKE SURE YOU ACTUALLY START IT
                 reader.Start()
+                reader
 
             // main msg loop
-            let rec loop (registry : Map<string, RSSAgent>) = async {
+            let rec loop (registry : Map<string, RSSAgent>, reader: SourceReaderAgent) = async {
                 let! msg = inbox.Receive()
                 match msg with
-                | StartReader -> 
-                    printfn "supervisior starting reader"
-                    start_reader()
                 | Create source_name ->
-                    printfn "supervisor trying to create %s" source_name
+                    //printfn "supervisor trying to create %s" source_name
                     // check registry
                     match registry.ContainsKey source_name with
                     | true -> ()
                     | false -> 
                         let new_reg = start_agent registry source_name
-                        return! loop (new_reg)
+                        return! loop (new_reg, reader)
 
                 | Remove source_name ->
-                    printfn "supervisor trying to remove %s" source_name
+                    //printfn "supervisor trying to remove %s" source_name
                     // check registry
                     match registry.ContainsKey source_name with
                     | true -> 
                         // tell agent to die
-                        printfn "found source to remove -> killing..."
+                        //printfn "found source to remove -> killing..."
                         (registry.[source_name]).Post(Die)
                         // remove from registry
-                        return! loop (registry.Remove(source_name))
+                        return! loop (registry.Remove(source_name), reader)
                     | false -> 
-                        printfn "couldn't find source to remove!!!"
+                        //printfn "couldn't find source to remove!!!"
                         ()
 
                 | Error (source_name, ex_msg) ->
-                    printfn "supervisor got error %s for %s" ex_msg source_name
+                    //printfn "supervisor got error %s for %s" ex_msg source_name
                     // if we didn't tell it to die then restart it
                     match ex_msg with
                     | msg when msg = DeathMessage -> ()
                     | _ -> 
                         match source_name with 
-                        | n when n = reader_name -> start_reader()
+                        | n when n = reader_name -> 
+                            //printfn "RSS Reader Error %s" (DateTime.Now.ToString())
+                            return! loop (registry, start_reader())
                         | sn -> 
+                            //printfn "RSS Source Error: %s %s" sn (DateTime.Now.ToString())
                             let new_reg = restart_agent registry sn
-                            return! loop new_reg
+                            return! loop(new_reg, reader)
                         
                 | KillSupervisor -> 
-                    printfn "Supervisor about to die"
+                    //printfn "Supervisor about to die"
                     // kill children
                     registry
                     |> Seq.iter(fun map -> map.Value.Post(Die))
                     // die
                     failwith "Supervisor killed"
-                return! loop registry
+                return! loop(registry, reader)
             }
-            loop Map.empty 
+            loop(Map.empty, start_reader())
         )
 
         member this.Start() = agent.Start()
