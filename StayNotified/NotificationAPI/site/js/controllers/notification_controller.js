@@ -65,13 +65,10 @@
                 .then(onGetNotificationsComplete, onError);
         };
 
-        function MarkReviewedCallbackCreator(index) {
+        function markReviewedCallbackCreator(index) {
             //return a closure to update the correct index
             return function (data) {
                 if (data) {
-                    // our req went through (need to verify Mongo won't return true for bad inserts...)
-                    // may be better to return entire record...
-                    
                     $scope.notifications[index].status.case = "Reviewed";
                 }
             }
@@ -79,7 +76,7 @@
 
         $scope.markReviewed = function (id, index) {
             // create a callback closure with our index
-            var callback = MarkReviewedCallbackCreator(index);
+            var callback = markReviewedCallbackCreator(index);
             notification_factory.markReviewed(id)
                 .then(callback, onError);
         };

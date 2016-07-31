@@ -11,6 +11,8 @@ The project includes:
   * a simple db interface and Mongo implementation
   * agents for posting to Mongo
   * a simple AngularJS front-end example page
+    + this was thrown together just as a sample
+    + you'll need the Angular and Angular-Sanitze, as I never properly set up the packages
 
 ## This project uses:
 1. FSharp.Data for type providers and Twitter source files

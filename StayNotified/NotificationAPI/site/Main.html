@@ -1,94 +1,18 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-    <title>Third Party Notifications</title>
+    <title>Notifications</title>
+		<link rel="stylesheet" type="text/css" href="./styles.css">
     <!-- scripts: consider bundling... -->
     <script type="text/javascript" src="js/angular.js"></script>
     <script type="text/javascript" src="js/angular-sanitize.js"></script>
     <script type="text/javascript" src="js/app.js"></script>
     <script type="text/javascript" src="js/factories/notification_factory.js"></script>
     <script type="text/javascript" src="js/controllers/notification_controller.js"></script>
-    <style>
-        body, h1, h2 {
-            margin: 0 !important;
-            padding: 0 !important;
-            font-family: Arial;
-        }
-
-        .blue500 {
-            background-color: #2196F3;
-            color: #FFFFFF;
-        }
-
-        .blue500_text {
-            color: #2196F3;
-            font-weight: bold;
-        }
-
-        #header {
-            padding: 10px 0 35px 35px;
-            padding-bottom: 35px;
-            margin-bottom: 35px;
-            box-shadow: 3px 3px 7px rgba(0,0,0,0.4);
-        }
-
-        input[type=button], input[type=submit] {
-            border-radius: 0;
-            border: none;
-            padding: 5px 10px 5px 10px;
-            font-weight: bold;
-            background-color: #EF5350;
-            color: #FFFFFF;
-            box-shadow: 3px 3px 7px rgba(0,0,0,0.4);
-            outline: none;
-        }
-
-            input[type=button]:hover, input[type=submit]:hover {
-                background-color: #C62828;
-                outline: none;
-            }
-
-
-        input[type=text] {
-            border: none;
-            border-bottom: 1px solid #2196F3;
-            outline: none;
-        }
-
-
-        #search_div {
-            margin: 20px;
-        }
-
-        #sorting_div {
-            margin: 20px;
-        }
-
-
-        .notification_list_inner {
-            margin: 30px 50px 0 50px;
-            padding: 10px 40px 10px 40px;
-            box-shadow: 0px 2px 3px rgba(0,0,0,0.4);
-        }
-
-            .notification_list_inner:hover {
-                box-shadow: 0px 6px 10px rgba(0,0,0,0.4);
-                -webkit-transition: box-shadow 200ms; /* Safari */
-                transition: box-shadow 200ms;
-            }
-
-        h3 {
-            color: #2196F3;
-        }
-
-        .notification_list_inner a {
-            color: #EF5350;
-        }
-    </style>
 </head>
 <body ng-app="NOTEY">
     <div id="header" class="blue500">
-        <h2>Third Party Notifications</h2>
+        <h2>Notifications</h2>
     </div>
     <div ng-controller="notification_controller">
         <!-- search filters -->
@@ -103,7 +27,6 @@
                     <option value="reviewed">Reviewed</option>
                 </select>
                 <input type="submit" value="SEARCH" />
-                <!--<input type="button" ng-click="getNotifications()" value="GET (to be replaced by search submit)" />-->
             </form>
         </div>
 
